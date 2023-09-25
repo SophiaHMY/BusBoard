@@ -1,43 +1,56 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using RestSharp;
-using RestSharp.Authenticators;
 
 namespace BusBoard.ConsoleApp
 {
     class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-            var client = new RestClient("https://api.tfl.gov.uk/StopPoint/");
-            var request = new RestRequest("{id}/Arrivals");
-            
+            //Part 1
             Console.WriteLine("Enter bus stop code");
-            var stop = Console.ReadLine();
-            request.AddParameter("id", stop);
-            
-            var response = client.Get(request);
-            var content = JsonConvert.DeserializeObject<List<Bus>>(response.Content);
-            var buses = GetBuses(content, 5);
-            Console.WriteLine("Next 5 buses at bus stop " + stop +" :");
+            var stopCode = Console.ReadLine();
+            GetNextBusesAtStop(stopCode);
+
+            //Part 2
+            Console.WriteLine("Enter postcode");
+            var postcode = LookupPostcode(Console.ReadLine());
+            GetNearestBusStops(postcode);
+        }
+
+        private static void GetNextBusesAtStop(string stopCode)
+        {
+            var busClient = new BusClient();
+            var buses = busClient.GetBusesAtStop(stopCode, 5);
+
+            Console.WriteLine("Next 5 buses at bus stop " + stopCode + " :");
             foreach (var bus in buses)
             {
-                Console.WriteLine((bus.convertDate()).ToString("h:mm tt") + " " + bus.DestinationName);
+                Console.WriteLine((bus.ConvertDate()).ToString("h:mm tt") + " " + bus.DestinationName);
             }
-
         }
 
-        private static IEnumerable<Bus> GetBuses(IEnumerable<Bus> buses, int amount)
+        private static Postcode LookupPostcode(string postcode)
         {
-            var sortedBuses = buses.OrderBy(bus => bus.ExpectedArrival);
-            return (sortedBuses.ToList()).GetRange(0, amount);
+            var client = new RestClient("https://api.postcodes.io/postcodes/");
+            var request = new RestRequest(postcode);
 
+            var response = client.Get(request);
+            var result = (JObject.Parse(response.Content))["result"].ToString();
+            return (JsonConvert.DeserializeObject<Postcode>(result));
         }
 
+        private static void GetNearestBusStops(Postcode postcode)
+        {
+            var busClient = new BusClient();
+            var busStops = busClient.GetBusCodes(postcode, "NaptanPublicBusCoachTram", 2);
+            foreach (var busStop in busStops)
+            {
+                GetNextBusesAtStop(busStop.Id);
+                Console.WriteLine("");
+            }
+        }
     }
 }

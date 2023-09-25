@@ -7,7 +7,7 @@ namespace BusBoard.ConsoleApp
         public string DestinationName { get; set; }
         public string ExpectedArrival { get; set; }
 
-        public DateTime convertDate()
+        public DateTime ConvertDate()
         {
             return Convert.ToDateTime(ExpectedArrival);
         }
